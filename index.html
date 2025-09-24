@@ -250,6 +250,48 @@
                 <div id="settingsView" class="hidden">
                     <div class="row justify-content-center">
                         <div class="col-lg-8">
+                            <!-- Настройки GitHub -->
+                            <div class="card mb-4 hidden">
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary">
+                                        <i class="fab fa-github me-2"></i>Настройки GitHub APIs
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="github-config">
+                                        <h6>Инструкция по настройке:</h6>
+                                        <ol>
+                                            <li>Создайте репозиторий на GitHub (например, "metacompetencies-data")</li>
+                                            <li>Создайте Personal Access Token с правами repo</li>
+                                            <li>Заполните форму ниже и нажмите "Сохранить настройки"</li>
+                                        </ol>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">GitHub Username</label>
+                                        <input type="text" class="form-control" id="githubUsername" placeholder="Ваш username на GitHub">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">GitHub Token</label>
+                                        <input type="password" class="form-control" id="githubToken" placeholder="Personal Access Token">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Название репозитория</label>
+                                        <input type="text" class="form-control" id="githubRepo" placeholder="metacompetencies-data">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Файл для данных</label>
+                                        <input type="text" class="form-control" id="githubFile" value="data.json" placeholder="data.json">
+                                    </div>
+                                    
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <button class="btn btn-primary mb-2" onclick="saveGithubConfig()">Сохранить настройки</button>
+                                        <button class="btn btn-info mb-2" onclick="testGithubConnection()">Проверить подключение</button>
+                                        <button class="btn btn-success mb-2" onclick="loadFromGitHub()">Загрузить данные</button>
+                                        <button class="btn btn-warning mb-2" onclick="saveToGitHub()">Сохранить данные</button>
+                                    </div>
+                                </div>
+                            </div>
 
                             <!-- Настройки администратора -->
                             <div class="card mb-4">
@@ -678,25 +720,11 @@
         function loadGithubConfig() {
             // Пробуем загрузить из localStorage
             const config = JSON.parse(localStorage.getItem(GITHUB_CONFIG_KEY));
-            // if (config) {
-            //     // Если токен закодирован, декодируем его
-            //     if (config.token && config.token.startsWith('encoded:')) {
-            //         const encodedToken = config.token.substring(8); // Убираем префикс 'encoded:'
-            //         config.token = decodeText(encodedToken, TOKEN_KEY);
-            //     }
-            //     githubConfig = config;
-            //     document.getElementById('githubUsername').value = config.username || '';
-            //     document.getElementById('githubToken').value = config.token || '';
-            //     document.getElementById('githubRepo').value = config.repo || '';
-            //     document.getElementById('githubFile').value = config.file || 'data.json';
-            // } else {
-                // Используем значения по умолчанию с декодированным токеном
                 githubConfig = DEFAULT_GITHUB_CONFIG;
                 document.getElementById('githubUsername').value = DEFAULT_GITHUB_CONFIG.username;
                 document.getElementById('githubToken').value = DEFAULT_GITHUB_CONFIG.token;
                 document.getElementById('githubRepo').value = DEFAULT_GITHUB_CONFIG.repo;
                 document.getElementById('githubFile').value = DEFAULT_GITHUB_CONFIG.file;
-            //}
         }
         
         function saveGithubConfig() {
