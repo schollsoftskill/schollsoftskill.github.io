@@ -189,6 +189,20 @@
             padding: 4px;
             border-radius: 4px;
         }
+        
+        .group-selector {
+            margin-bottom: 15px;
+        }
+        
+        .group-selector label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: block;
+        }
+        
+        .group-performance-chart {
+            height: 350px;
+        }
     </style>
 </head>
 <body>
@@ -356,6 +370,12 @@
                                     <h6 class="m-0 font-weight-bold text-primary">Добавить баллы</h6>
                                 </div>
                                 <div class="card-body">
+                                    <div class="group-selector">
+                                        <label>Группа:</label>
+                                        <select class="form-select" id="scoreGroup" onchange="filterStudentsByGroup('score')">
+                                            <option value="">Все группы</option>
+                                        </select>
+                                    </div>
                                     <div class="mb-3">
                                         <select class="form-select" id="scoreStudent"></select>
                                     </div>
@@ -388,6 +408,12 @@
                                     <h6 class="m-0 font-weight-bold text-primary">Список учеников</h6>
                                 </div>
                                 <div class="card-body">
+                                    <div class="group-selector">
+                                        <label>Группа:</label>
+                                        <select class="form-select" id="studentsGroup" onchange="filterStudentsTable()">
+                                            <option value="">Все группы</option>
+                                        </select>
+                                    </div>
                                     <div class="table-responsive">
                                         <table class="table table-bordered">
                                             <thead>
@@ -396,6 +422,7 @@
                                                     <th>ФИО</th>
                                                     <th>Группа</th>
                                                     <th>Логин</th>
+                                                    <th>Общие баллы</th>
                                                     <th>Действия</th>
                                                 </tr>
                                             </thead>
@@ -411,12 +438,37 @@
                     <div class="row">
                         <div class="col-12">
                             <div class="card mb-4">
-                                <div class="card-header py-3">
+                                <div class="card-header py-3 d-flex justify-content-between align-items-center">
                                     <h6 class="m-0 font-weight-bold text-primary">Статистика группы</h6>
+                                    <div class="group-selector" style="width: 200px;">
+                                        <select class="form-select" id="groupChartGroup" onchange="renderGroupChart()">
+                                            <option value="">Все группы</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <div class="card-body">
                                     <div class="chart-container">
                                         <canvas id="groupChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card mb-4">
+                                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                                    <h6 class="m-0 font-weight-bold text-primary">Успеваемость группы по датам</h6>
+                                    <div class="group-selector" style="width: 200px;">
+                                        <select class="form-select" id="performanceGroup" onchange="renderGroupPerformanceChart()">
+                                            <option value="">Все группы</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container group-performance-chart">
+                                        <canvas id="groupPerformanceChart"></canvas>
                                     </div>
                                 </div>
                             </div>
@@ -433,7 +485,13 @@
                                 <h6 class="m-0 font-weight-bold text-primary">Выберите ученика для просмотра</h6>
                             </div>
                             <div class="card-body">
-                                <select class="form-select" id="viewStudentSelect" onchange="loadSelectedStudentData()">
+                                <div class="group-selector">
+                                    <label>Группа:</label>
+                                    <select class="form-select" id="viewGroupSelect" onchange="filterStudentsByGroup('view')">
+                                        <option value="">Все группы</option>
+                                    </select>
+                                </div>
+                                <select class="form-select mt-2" id="viewStudentSelect" onchange="loadSelectedStudentData()">
                                     <option value="">-- Выберите ученика --</option>
                                 </select>
                             </div>
@@ -496,9 +554,17 @@
                             <h6 class="m-0 font-weight-bold text-primary">Таблица данных</h6>
                         </div>
                         <div class="card-body">
-                            <div class="mb-3">
-                                <label class="form-label">Выберите дату</label>
-                                <input type="date" class="form-control" id="tableDate" onchange="loadTableData()">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Выберите дату</label>
+                                    <input type="date" class="form-control" id="tableDate" onchange="loadTableData()">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Выберите группу</label>
+                                    <select class="form-select" id="tableGroup" onchange="loadTableData()">
+                                        <option value="">Все группы</option>
+                                    </select>
+                                </div>
                             </div>
                             <div class="table-responsive">
                                 <table class="table table-bordered" id="dataTable">
@@ -532,6 +598,7 @@
         let groupChart = null;
         let progressChart = null;
         let radarChart = null;
+        let groupPerformanceChart = null;
         let githubConfig = null;
         let selectedStudentId = null;
         let unsavedChanges = false;
@@ -641,7 +708,25 @@
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('scoreDate').value = today;
             document.getElementById('tableDate').value = today;
+            
+            // Проверка запомненных данных для автоматического входа
+            checkRememberedLogin();
         });
+        
+        // Проверка запомненных данных для автоматического входа
+        function checkRememberedLogin() {
+            const remembered = JSON.parse(localStorage.getItem(REMEMBER_ME_KEY));
+            if (remembered && remembered.username && remembered.password) {
+                document.getElementById('username').value = remembered.username;
+                document.getElementById('password').value = remembered.password;
+                document.getElementById('rememberMe').checked = true;
+                
+                // Автоматически выполняем вход
+                setTimeout(() => {
+                    login();
+                }, 500);
+            }
+        }
         
         // Инициализация приложения с загрузкой данных из GitHub
         async function initializeApp() {
@@ -658,19 +743,6 @@
             } else {
                 // Если настройки GitHub не заданы, показываем экран входа
                 showLoginView();
-            }
-            
-            // Проверка запомненных данных для автоматического входа
-            checkRememberedLogin();
-        }
-        
-        // Проверка запомненных данных для автоматического входа
-        function checkRememberedLogin() {
-            const remembered = JSON.parse(localStorage.getItem(REMEMBER_ME_KEY));
-            if (remembered && remembered.username && remembered.password) {
-                document.getElementById('username').value = remembered.username;
-                document.getElementById('password').value = remembered.password;
-                document.getElementById('rememberMe').checked = true;
             }
         }
         
@@ -956,6 +1028,7 @@
             } else {
                 document.getElementById('studentSelector').classList.remove('hidden');
                 populateStudentSelector();
+                populateGroupSelectors();
             }
         }
         
@@ -979,6 +1052,7 @@
             document.getElementById('tableView').classList.remove('hidden');
             document.getElementById('sidebar').classList.remove('hidden');
             
+            populateGroupSelectors();
             loadTableData();
         }
         
@@ -1165,18 +1239,124 @@
             showToast('Учетные данные администратора успешно изменены', 'success');
         }
         
-        // Функции преподавателя
-        function loadTeacherData() {
-            renderStudentsList();
-            populateStudentDropdown();
-            renderGroupChart();
+        // Функции для работы с группами
+        function getGroups() {
+            const groups = [...new Set(window.students.map(student => student.group))].filter(group => group);
+            return groups.sort();
         }
         
-        function renderStudentsList() {
+        function populateGroupSelectors() {
+            const groups = getGroups();
+            
+            // Селекторы для страницы преподавателя
+            const groupSelectors = [
+                'scoreGroup', 'studentsGroup', 'groupChartGroup', 'performanceGroup'
+            ];
+            
+            // Селекторы для страницы ученика (преподавательский вид)
+            const viewGroupSelectors = [
+                'viewGroupSelect'
+            ];
+            
+            // Селектор для таблицы данных
+            const tableGroupSelectors = [
+                'tableGroup'
+            ];
+            
+            // Заполняем все селекторы групп
+            groupSelectors.forEach(selectorId => {
+                const selector = document.getElementById(selectorId);
+                if (selector) {
+                    selector.innerHTML = '<option value="">Все группы</option>';
+                    groups.forEach(group => {
+                        const option = document.createElement('option');
+                        option.value = group;
+                        option.textContent = group;
+                        selector.appendChild(option);
+                    });
+                }
+            });
+            
+            viewGroupSelectors.forEach(selectorId => {
+                const selector = document.getElementById(selectorId);
+                if (selector) {
+                    selector.innerHTML = '<option value="">Все группы</option>';
+                    groups.forEach(group => {
+                        const option = document.createElement('option');
+                        option.value = group;
+                        option.textContent = group;
+                        selector.appendChild(option);
+                    });
+                }
+            });
+            
+            tableGroupSelectors.forEach(selectorId => {
+                const selector = document.getElementById(selectorId);
+                if (selector) {
+                    selector.innerHTML = '<option value="">Все группы</option>';
+                    groups.forEach(group => {
+                        const option = document.createElement('option');
+                        option.value = group;
+                        option.textContent = group;
+                        selector.appendChild(option);
+                    });
+                }
+            });
+        }
+        
+        function filterStudentsByGroup(type) {
+            const group = type === 'score' 
+                ? document.getElementById('scoreGroup').value 
+                : document.getElementById('viewGroupSelect').value;
+            
+            const studentSelector = type === 'score' 
+                ? document.getElementById('scoreStudent') 
+                : document.getElementById('viewStudentSelect');
+            
+            studentSelector.innerHTML = '<option value="">-- Выберите ученика --</option>';
+            
+            let filteredStudents = window.students;
+            if (group) {
+                filteredStudents = window.students.filter(student => student.group === group);
+            }
+            
+            filteredStudents.forEach(student => {
+                const option = document.createElement('option');
+                option.value = student.id;
+                option.textContent = `${student.name} (${student.group})`;
+                studentSelector.appendChild(option);
+            });
+        }
+        
+        function filterStudentsTable() {
+            const group = document.getElementById('studentsGroup').value;
+            renderStudentsList(group);
+        }
+        
+        // Функции преподавателя
+        function loadTeacherData() {
+            populateGroupSelectors();
+            filterStudentsByGroup('score');
+            renderStudentsList();
+            renderGroupChart();
+            renderGroupPerformanceChart();
+        }
+        
+        function renderStudentsList(groupFilter = '') {
             const tbody = document.getElementById('studentsList');
             tbody.innerHTML = '';
             
-            window.students.forEach(student => {
+            let studentsToShow = window.students;
+            if (groupFilter) {
+                studentsToShow = studentsToShow.filter(student => student.group === groupFilter);
+            }
+            
+            studentsToShow.forEach(student => {
+                // Вычисляем общее количество баллов для студента
+                const totalPoints = window.scores
+                    .filter(score => score.studentId === student.id)
+                    .reduce((sum, score) => sum + score.points, 0);
+                
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${student.id}</td>
@@ -1189,6 +1369,7 @@
                                data-field="group" data-id="${student.id}">
                     </td>
                     <td>${student.username}</td>
+                    <td>${totalPoints}</td>
                     <td>
                         <button class="btn btn-danger btn-sm" onclick="deleteStudent(${student.id})">Удалить</button>
                     </td>
@@ -1226,9 +1407,11 @@
                 }
                 
                 // Перерисовываем список, чтобы обновить логины
-                renderStudentsList();
+                const currentGroup = document.getElementById('studentsGroup').value;
+                renderStudentsList(currentGroup);
                 populateStudentDropdown();
                 populateStudentSelector();
+                populateGroupSelectors();
                 
                 showToast('Изменения сохранены', 'success');
             } else {
@@ -1305,6 +1488,7 @@
             // Очищаем поля и обновляем список
             document.getElementById('newStudentName').value = '';
             document.getElementById('newStudentGroup').value = '';
+            populateGroupSelectors();
             loadTeacherData();
             
             showToast('Ученик добавлен. Логин: ' + username + ', Пароль: password', 'success');
@@ -1326,6 +1510,7 @@
                 saveToGitHubWithRetry();
             }
             
+            populateGroupSelectors();
             loadTeacherData();
             
             showToast('Ученик удален', 'success');
@@ -1360,20 +1545,31 @@
             // Очищаем поле баллов
             document.getElementById('scorePoints').value = '';
             
+            // Обновляем графики
+            renderGroupChart();
+            renderGroupPerformanceChart();
+            
             showToast('Баллы добавлены', 'success');
         }
         
         function renderGroupChart() {
             const ctx = document.getElementById('groupChart').getContext('2d');
+            const selectedGroup = document.getElementById('groupChartGroup').value;
             
             if (groupChart) {
                 groupChart.destroy();
             }
             
+            // Фильтруем студентов по выбранной группе
+            let studentsToShow = window.students;
+            if (selectedGroup) {
+                studentsToShow = studentsToShow.filter(student => student.group === selectedGroup);
+            }
+            
             // Подготовка данных для графика
             const studentScores = {};
             
-            window.students.forEach(student => {
+            studentsToShow.forEach(student => {
                 studentScores[student.id] = {
                     student: student,
                     total: 0
@@ -1400,6 +1596,76 @@
                         backgroundColor: 'rgba(78, 115, 223, 0.5)',
                         borderColor: 'rgba(78, 115, 223, 1)',
                         borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderGroupPerformanceChart() {
+            const ctx = document.getElementById('groupPerformanceChart').getContext('2d');
+            const selectedGroup = document.getElementById('performanceGroup').value;
+            
+            if (groupPerformanceChart) {
+                groupPerformanceChart.destroy();
+            }
+            
+            // Фильтруем студентов по выбранной группе
+            let studentsToShow = window.students;
+            if (selectedGroup) {
+                studentsToShow = studentsToShow.filter(student => student.group === selectedGroup);
+            }
+            
+            // Получаем все уникальные даты из оценок
+            const allDates = [...new Set(window.scores.map(score => score.date))].sort();
+            
+            // Группируем баллы по датам для выбранной группы
+            const dateData = {};
+            
+            allDates.forEach(date => {
+                dateData[date] = 0;
+                let studentCount = 0;
+                
+                studentsToShow.forEach(student => {
+                    const studentScores = window.scores.filter(score => 
+                        score.studentId === student.id && score.date === date);
+                    
+                    if (studentScores.length > 0) {
+                        const dailyTotal = studentScores.reduce((sum, score) => sum + score.points, 0);
+                        dateData[date] += dailyTotal;
+                        studentCount++;
+                    }
+                });
+                
+                // Вычисляем средний балл за дату
+                if (studentCount > 0) {
+                    dateData[date] = dateData[date] / studentCount;
+                }
+            });
+            
+            const dates = Object.keys(dateData);
+            const averages = Object.values(dateData);
+            
+            groupPerformanceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: 'Средний балл группы',
+                        data: averages,
+                        backgroundColor: 'rgba(28, 200, 138, 0.2)',
+                        borderColor: 'rgba(28, 200, 138, 1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3
                     }]
                 },
                 options: {
@@ -1528,6 +1794,8 @@
         // Функции для работы с таблицей данных
         function loadTableData() {
             const date = document.getElementById('tableDate').value;
+            const group = document.getElementById('tableGroup').value;
+            
             if (!date) return;
             
             const table = document.getElementById('dataTable');
@@ -1543,8 +1811,14 @@
                 thead.innerHTML += `<th>${category}</th>`;
             });
             
+            // Фильтруем студентов по группе
+            let studentsToShow = window.students;
+            if (group) {
+                studentsToShow = studentsToShow.filter(student => student.group === group);
+            }
+            
             // Заполняем таблицу данными
-            window.students.forEach(student => {
+            studentsToShow.forEach(student => {
                 const row = document.createElement('tr');
                 row.innerHTML = `<td>${student.name}</td><td>${student.group}</td>`;
                 
@@ -1601,6 +1875,10 @@
             if (githubConfig && githubConfig.autoSync) {
                 saveToGitHubWithRetry();
             }
+            
+            // Обновляем графики
+            renderGroupChart();
+            renderGroupPerformanceChart();
         }
         
     </script>
